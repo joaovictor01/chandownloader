@@ -11,11 +11,16 @@ import urllib.request, urllib.error, urllib.parse
 thread_number = ""
 
 def get_json_url(url):
-    return f"{url.replace('boards.4chan','a.4cdn')}.json"
+    if '4channel' in url:
+        return f"{url.replace('boards.4channel','a.4cdn')}.json"
+    else:
+        return f"{url.replace('boards.4chan','a.4cdn')}.json"
 
 
 def get_thread_title(url):
+    print(url)
     thread_json_url = get_json_url(url)
+    print(thread_json_url)
     r = requests.get(thread_json_url, verify=False)
     thread_json = r.json()
     thread_title = thread_json['posts'][0]['semantic_url']
