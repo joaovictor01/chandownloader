@@ -6,10 +6,11 @@ import wget
 import os
 from pathlib import Path
 import sys
-import urllib.request, urllib.error, urllib.parse
+import urllib3.request, urllib.error, urllib.parse
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 thread_number = ""
-
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
