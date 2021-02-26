@@ -10,17 +10,27 @@ import urllib.request, urllib.error, urllib.parse
 
 thread_number = ""
 
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
 def get_json_url(url):
     if '4channel' in url:
         return f"{url.replace('boards.4channel','a.4cdn')}.json"
     else:
-        return f"{url.replace('boards.4chan','a.4cdn')}.json"
+        return f"{url.replace('boards.4chanX','a.4cdn')}.json"
 
 
 def get_thread_title(url):
-    print(url)
     thread_json_url = get_json_url(url)
-    print(thread_json_url)
+    print(bcolors.BOLD + bcolors.OKCYAN + 'Link of json file of the thread is:' + f'{thread_json_url}' + bcolors.ENDC)
     r = requests.get(thread_json_url, verify=False)
     thread_json = r.json()
     thread_title = thread_json['posts'][0]['semantic_url']
@@ -34,7 +44,7 @@ def create_img_folder(url, thread_title):
     thread_number = str(url.split("thread/")[1])
     path = Path.joinpath(Path.home(), f'4chan/{board}/{thread_title}__{thread_number}')
     Path(path).mkdir(parents=True, exist_ok=True)
-    print(f'\nPath of created folder is: {path}')
+    print(bcolors.OKGREEN + bcolors.BOLD + f'\nPath of created folder is: {path}' + bcolors.ENDC)
     return path
 
 
@@ -42,7 +52,7 @@ def download_thread_json(url, path):
     thread_json_url = get_json_url(url)
     print(thread_json_url)
     wget.download(thread_json_url, str(path))
-    print("Thread's json downloaded successfully!")
+    print(bcolors.OKGREEN + bcolors.BOLD + "\nThread's json downloaded successfully!" + bcolors.ENDC)
 
 
 def download_all(url, path):
@@ -75,17 +85,17 @@ def download_all(url, path):
             try:
                 filename = media.text.strip()
                 if not os.path.isfile(f"{path}/{filename}"):
-                    print(f"\nDownloading {filename}")
+                    print(bcolors.OKGREEN + bcolors.BOLD + f"\nDownloading {filename}" + bcolors.ENDC)
                     wget.download("https:"+media["href"], f"{path}/{filename}")
                 else:
-                    print("\nThis file already exists, continuing...")
+                    print(bcolors.WARNING + "\nThis file already exists, continuing..." + bcolors.ENDC)
             except Exception as e:
                 print(e)
                 print("\nFailed to download.")
 
 
 def main():
-    url = input("Insert the thread link here: ")
+    url = input(bcolors.HEADER + bcolors.BOLD + "Insert the thread link here: " + bcolors.ENDC)
     thread_title = get_thread_title(url)
     path = create_img_folder(url, thread_title)
     download_all(url, path)
