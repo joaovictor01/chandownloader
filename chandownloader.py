@@ -26,7 +26,7 @@ def get_json_url(url):
     if '4channel' in url:
         return f"{url.replace('boards.4channel','a.4cdn')}.json"
     else:
-        return f"{url.replace('boards.4chanX','a.4cdn')}.json"
+        return f"{url.replace('boards.4chan','a.4cdn')}.json"
 
 
 def get_thread_title(url):
