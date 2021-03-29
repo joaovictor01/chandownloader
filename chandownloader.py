@@ -22,6 +22,8 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webm']
+
 def get_json_url(url):
     if '4channel' in url:
         return f"{url.replace('boards.4channel','a.4cdn')}.json"
@@ -35,6 +37,7 @@ def get_thread_title(url):
     r = requests.get(thread_json_url, verify=False)
     thread_json = r.json()
     thread_title = thread_json['posts'][0]['semantic_url']
+    print(bcolors.BOLD + bcolors.OKCYAN + f'\n{thread_title}' + bcolors.ENDC)
     return thread_title
 
 
@@ -52,8 +55,18 @@ def create_img_folder(url, thread_title):
 def download_thread_json(url, path):
     thread_json_url = get_json_url(url)
     print(thread_json_url)
-    wget.download(thread_json_url, str(path))
-    print(bcolors.OKGREEN + bcolors.BOLD + "\nThread's json downloaded successfully!" + bcolors.ENDC)
+    try:
+        wget.download(thread_json_url, str(path))
+        print(bcolors.OKGREEN + bcolors.BOLD + "\nThread's json downloaded successfully!" + bcolors.ENDC)
+    except Exception as e:
+        print(e)
+
+
+def remove_extension(word):
+    global EXTENSIONS
+    for ext in EXTENSIONS:
+        if ext in word:
+            return word.replace(ext, '')
 
 
 def download_all(url, path):
@@ -84,10 +97,11 @@ def download_all(url, path):
         hrefTag = tag.find_all("a")
         for media in hrefTag:
             try:
-                filename = media.text.strip()
+                generated_filename = media["href"].split("/")[-1].strip()
+                filename = f'{remove_extension(generated_filename)}__{media.text.strip()}'
                 if not os.path.isfile(f"{path}/{filename}"):
                     print(bcolors.OKGREEN + bcolors.BOLD + f"\nDownloading {filename}" + bcolors.ENDC)
-                    wget.download("https:"+media["href"], f"{path}/{filename}")
+                    wget.download(f'https:{media["href"]}', f'{path}/{filename}')
                 else:
                     print(bcolors.WARNING + "\nThis file already exists, continuing..." + bcolors.ENDC)
             except Exception as e:
@@ -97,7 +111,10 @@ def download_all(url, path):
 
 def main():
     url = input(bcolors.HEADER + bcolors.BOLD + "Insert the thread link here: " + bcolors.ENDC)
-    thread_title = get_thread_title(url)
+    try:
+        thread_title = get_thread_title(url)
+    except:
+        thread_title = url.split('/')[1].split('.')[0]
     path = create_img_folder(url, thread_title)
     download_all(url, path)
 
