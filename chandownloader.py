@@ -7,9 +7,15 @@ import os
 from pathlib import Path
 import sys
 import urllib3.request, urllib.error, urllib.parse
+import time
+import threading
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+URL = ''
+PATH = ''
+THREAD_MONITORING = ''
+DOWNLOADING = False
 thread_number = ""
 class bcolors:
     HEADER = '\033[95m'
@@ -23,6 +29,23 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webm']
+
+
+class setInterval :
+    def __init__(self,interval,action) :
+        self.interval=interval
+        self.action=action
+        self.stopEvent=threading.Event()
+        thread=threading.Thread(target=self.__setInterval)
+        thread.start()
+    def __setInterval(self) :
+        nextTime=time.time()+self.interval
+        while not self.stopEvent.wait(nextTime - time.time()) :
+            nextTime+=self.interval
+            self.action()
+    def cancel(self) :
+        self.stopEvent.set()
+
 
 def get_json_url(url):
     if '4channel' in url:
@@ -69,8 +92,38 @@ def remove_extension(word):
             return word.replace(ext, '')
 
 
-def download_all(url, path):
-    global thread_number
+def is_archived(url):
+    print('Checking if thread is archived...')
+    r = requests.get(url, verify=False)
+    soup = BeautifulSoup(r.content, 'html.parser')
+    thread404 = soup.find('div',{'class':'boxbar'})
+    if thread404:
+        return True
+    return False
+
+
+def monitor_thread():
+    if DOWNLOADING:
+        # if already is downloading thread ignore the check
+        print('Already downloading...')
+        return
+    elif is_archived(URL):
+        # if is archived stop monitoring the thread
+        print('This thread is archived.')
+        THREAD_MONITORING.cancel()
+    else:
+        print('Downloading thread')
+        # download the update json of thread and the new media if it has any
+        threading.Thread(target=download_all).start()
+        # self.download_all(url)
+
+
+def download_all():
+    global thread_number, DOWNLOADING
+    url = URL
+    path = PATH
+    DOWNLOADING = True
+
     r = requests.get(url, verify=False)
     soup = BeautifulSoup(r.content, 'html.parser')
     divMedia = soup.find_all("div", {"class": "fileText"})
@@ -83,14 +136,14 @@ def download_all(url, path):
     except Exception as e:
         print(e)
 
-    try:
-        # Download the html of the page
-        response = urllib.request.urlopen(url)
-        web_content = response.read()
-        with open(Path.joinpath(path, 'webpage/index.html'), 'wb') as f:
-            f.write(web_content)
-    except Exception as e:
-        print(e)
+    # try:
+    #     # Download the html of the page
+    #     response = urllib.request.urlopen(url)
+    #     web_content = response.read()
+    #     with open(Path.joinpath(path, 'webpage/index.html'), 'wb') as f:
+    #         f.write(web_content)
+    # except Exception as e:
+    #     print(e)
 
     # Download all media files from the thread
     for tag in divMedia:
@@ -108,15 +161,21 @@ def download_all(url, path):
                 print(e)
                 print("\nFailed to download.")
 
+    DOWNLOADING = False
+
 
 def main():
-    url = input(bcolors.HEADER + bcolors.BOLD + "Insert the thread link here: " + bcolors.ENDC)
+    global URL, PATH
+    URL = input(bcolors.HEADER + bcolors.BOLD + "Insert the thread link here: " + bcolors.ENDC)
     try:
-        thread_title = get_thread_title(url)
+        thread_title = get_thread_title(URL)
     except:
-        thread_title = url.split('/')[1].split('.')[0]
-    path = create_img_folder(url, thread_title)
-    download_all(url, path)
+        thread_title = URL.split('/')[1].split('.')[0]
+    PATH = create_img_folder(URL, thread_title)
+    # download_all(url, path)
+    # monitor_thread(url, path)
+    THREAD_MONITORING = setInterval(10, monitor_thread)
+    # threading.Thread(target=download_all, args=(url, path,)).start()
 
 
 if __name__ == "__main__":
