@@ -35,7 +35,7 @@ class ChanDownloader:
 
     def get_json_url(self):
         """ Get the url of the current 4chan thread's json"""
-        if "4channel" in url:
+        if "4channel" in self.url:
             return f"{self.url.replace('boards.4channel','a.4cdn')}.json"
         else:
             return f"{self.url.replace('boards.4chan','a.4cdn')}.json"
@@ -43,7 +43,7 @@ class ChanDownloader:
     def get_thread_title(self):
         """ Get the title of the current 4chan thread """
         try:
-            thread_json_url = self.get_json_url(self.url)
+            thread_json_url = self.get_json_url()
             print(
                 bcolors.BOLD
                 + bcolors.OKCYAN
@@ -61,7 +61,7 @@ class ChanDownloader:
 
     def create_img_folder(self):
         """ Create an Image Folder for the media of the thread to be stored """
-        board = url.split("/")[3]
+        board = self.url.split("/")[3]
         self.thread_number = str(self.url.split("thread/")[1])
         path = Path.joinpath(Path.home(), f"4chan/{board}/{self.thread_title}__{self.thread_number}")
         Path(path).mkdir(parents=True, exist_ok=True)
@@ -112,7 +112,7 @@ class ChanDownloader:
             # if already is downloading thread ignore the check
             print("Already downloading...")
             return
-        elif is_archived(self.url):
+        elif self.is_archived():
             # if is archived stop monitoring the thread
             print("This thread is archived.")
             THREAD_MONITORING.cancel()
@@ -133,7 +133,7 @@ class ChanDownloader:
             webpage_path = Path.joinpath(self.path, "webpage")
             Path(webpage_path).mkdir(parents=True, exist_ok=True)
             thread_json_path = Path.joinpath(webpage_path, "thread.json")
-            download_thread_json(self.url, thread_json_path)
+            self.download_thread_json()
         except Exception as e:
             print(e)
 
@@ -144,7 +144,7 @@ class ChanDownloader:
                 try:
                     generated_filename = media["href"].split("/")[-1].strip()
                     filename = (
-                        f"{remove_extension(generated_filename)}__{media.text.strip()}"
+                        f"{self.remove_extension(generated_filename)}__{media.text.strip()}"
                     )
                     if not os.path.isfile(f"{self.path}/{filename}"):
                         print(
@@ -173,7 +173,7 @@ def main():
     )
     chandownloader = ChanDownloader(url)
     # chandownloader.download_all()
-    THREAD_MONITORING = setInterval(10, chandownloader.monitor_thread)
+    THREAD_MONITORING = setInterval(30, chandownloader.monitor_thread)
 
 
 if __name__ == "__main__":
