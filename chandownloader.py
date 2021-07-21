@@ -109,7 +109,7 @@ class ChanDownloader:
     def monitor_thread(self):
         """ Start to monitor the current 4chan thread """
         if self.downloading:
-            # if already is downloading thread ignore the check
+            # if the thread is already being downloaded, ignore the check
             print("Already downloading...")
             return
         elif self.is_archived():
@@ -124,7 +124,6 @@ class ChanDownloader:
     def download_all(self):
         """ Download all files from the thread """
         self.downloading = True
-
         r = requests.get(self.url, verify=False)
         soup = BeautifulSoup(r.content, "html.parser")
         divMedia = soup.find_all("div", {"class": "fileText"})
