@@ -1,3 +1,4 @@
+import logging
 import requests
 import json
 import wget
@@ -13,10 +14,9 @@ from bs4 import BeautifulSoup
 from pathlib import Path
 from utils import bcolors, setInterval
 
-
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-THREAD_MONITORING = False
+THREAD_MONITORING = None
 EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webm"]
 
 
@@ -26,6 +26,18 @@ class ChanDownloader:
         self.downloading = False
         self.thread_title = self.get_thread_title()
         self.path = self.create_img_folder()
+        self.logger = logging.getLogger(__name__)
+        formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s', 
+                            '%m-%d-%Y %H:%M:%S')
+        self.logger.setLevel(logging.DEBUG)
+        file_handler = logging.FileHandler('chandownloader.log')
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(formatter)
+        stdout_handler = logging.StreamHandler(sys.stdout)
+        stdout_handler.setLevel(logging.DEBUG)
+        stdout_handler.setFormatter(formatter)
+        self.logger.addHandler(file_handler)
+        self.logger.addHandler(stdout_handler)
 
     def set_path(self, path):
         self.path = path
@@ -75,8 +87,8 @@ class ChanDownloader:
 
     def download_thread_json(self):
         """ Download the json of the current 4chan thread """
-        thread_json_url = get_json_url(self.url)
-        print(thread_json_url)
+        thread_json_url = self.get_json_url()
+        self.logger.info(f'Downloading json of thread: {thread_json_url}')
         try:
             wget.download(thread_json_url, str(self.path))
             print(
@@ -86,7 +98,7 @@ class ChanDownloader:
                 + bcolors.ENDC
             )
         except Exception as e:
-            print(e)
+            self.logger.debug(e)
 
     def remove_extension(self, word):
         """ Remove the extension from the filename and returns it """
@@ -110,14 +122,17 @@ class ChanDownloader:
         """ Start to monitor the current 4chan thread """
         if self.downloading:
             # if the thread is already being downloaded, ignore the check
-            print("Already downloading...")
+            self.logger.info("Already downloading...")
             return
         elif self.is_archived():
             # if is archived stop monitoring the thread
-            print("This thread is archived.")
-            THREAD_MONITORING.cancel()
+            self.logger.info("This thread is archived.")
+            try:
+                THREAD_MONITORING.cancel()
+            except Exception:
+                sys.exit()
         else:
-            print("Downloading thread")
+            self.logger.info("Downloading thread")
             # download the update json of thread and the new media if it has any
             threading.Thread(target=self.download_all, daemon=True).start()
 
@@ -133,8 +148,8 @@ class ChanDownloader:
             Path(webpage_path).mkdir(parents=True, exist_ok=True)
             thread_json_path = Path.joinpath(webpage_path, "thread.json")
             self.download_thread_json()
-        except Exception as e:
-            print(e)
+        except Exception as error:
+            self.logger.debug(error)
 
         # Download all media files from the thread
         for tag in divMedia:
@@ -146,19 +161,10 @@ class ChanDownloader:
                         f"{self.remove_extension(generated_filename)}__{media.text.strip()}"
                     )
                     if not os.path.isfile(f"{self.path}/{filename}"):
-                        print(
-                            bcolors.OKGREEN
-                            + bcolors.BOLD
-                            + f"\nDownloading {filename}"
-                            + bcolors.ENDC
-                        )
+                        print(bcolors.OKGREEN + bcolors.BOLD + f"\nDownloading {filename}"+ bcolors.ENDC)
                         wget.download(f'https:{media["href"]}', f"{self.path}/{filename}")
                     else:
-                        print(
-                            bcolors.WARNING
-                            + "\nThis file already exists, continuing..."
-                            + bcolors.ENDC
-                        )
+                        print(bcolors.WARNING + "\nThis file already exists, continuing..." + bcolors.ENDC)
                 except Exception as e:
                     print(e)
                     print("\nFailed to download.")
