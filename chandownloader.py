@@ -58,7 +58,8 @@ class ChanDownloader:
         
 
     def get_chan_name(self):
-        chan_name = str(self.url.split('https://')[1].split('/')[0].split('.')[0])
+        # chan_name = str(self.url.split('https://')[1].split('/')[0].split('.')[0])
+        chan_name = str(self.url.replace('https://','').split('.org')[0].split('.')[-1])
         print_bold_green(f'CHAN: {chan_name}')
         return chan_name
 
@@ -99,7 +100,8 @@ class ChanDownloader:
             if self.chan_name == '4chan':
                 thread_title = thread_json["posts"][0]["semantic_url"]
             elif self.chan_name == '1500chan':
-                thread_title = clean_html_string(f"{thread_json['posts'][0]['sub']}_{thread_json['posts'][0]['com']}").replace('/', '')[:100]
+                sub = str(thread_json['posts'][0]['sub'])
+                thread_title = clean_html_string(f"{sub}_{thread_json['posts'][0]['com']}").replace('/', '')[:100]
             print(bcolors.BOLD + bcolors.OKCYAN + f"\n{thread_title}" + bcolors.ENDC)
             return thread_title
         except Exception as error:
@@ -182,41 +184,48 @@ class ChanDownloader:
             # download the update json of thread and the new media if it has any
             threading.Thread(target=self.download_all, daemon=True).start()
     
-    def download_all_media(self, soup):
-        if self.chan_name == '4chan':
-            divMedia = soup.find_all("div", {"class": "fileText"})
-            # Download all media files from the thread
-            for tag in divMedia:
-                hrefTag = tag.find_all("a")
-                for media in hrefTag:
-                    try:
-                        generated_filename = media["href"].split("/")[-1].strip()
-                        filename = (
-                            f"{self.remove_extension(generated_filename)}__{media.text.strip()}"
-                        )
-                        if not os.path.isfile(f"{self.path}/{filename}"):
-                            print(bcolors.OKGREEN + bcolors.BOLD + f"\nDownloading {filename}"+ bcolors.ENDC)
-                            wget.download(f'https:{media["href"]}', f"{self.path}/{filename}")
-                        else:
-                            print(bcolors.WARNING + "\nThis file already exists, continuing..." + bcolors.ENDC)
-                    except Exception as e:
-                        print(e)
-                        print("\nFailed to download.")
-        elif self.chan_name == '1500chan':
-            media_files = soup.find_all('p', {'class':'fileinfo'})
-            for media_file in media_files:
-                filename = media_file.find('a').text
-                media_path = media_file.find('a')['href']
-                link = f'https://1500chan.org{media_path}'
+    def download_all_4chan(self, soup):
+        divMedia = soup.find_all("div", {"class": "fileText"})
+        # Download all media files from the thread
+        for tag in divMedia:
+            hrefTag = tag.find_all("a")
+            for media in hrefTag:
                 try:
+                    generated_filename = media["href"].split("/")[-1].strip()
+                    filename = (
+                        f"{self.remove_extension(generated_filename)}__{media.text.strip()}"
+                    )
                     if not os.path.isfile(f"{self.path}/{filename}"):
                         print(bcolors.OKGREEN + bcolors.BOLD + f"\nDownloading {filename}"+ bcolors.ENDC)
-                        wget.download(link, f"{self.path}/{filename}")
+                        wget.download(f'https:{media["href"]}', f"{self.path}/{filename}")
                     else:
                         print(bcolors.WARNING + "\nThis file already exists, continuing..." + bcolors.ENDC)
                 except Exception as e:
                     print(e)
                     print("\nFailed to download.")
+    
+    def download_all_1500chan(self, soup):
+        media_files = soup.find_all('p', {'class':'fileinfo'})
+        for media_file in media_files:
+            filename = media_file.find('a').text
+            media_path = media_file.find('a')['href']
+            link = f'https://1500chan.org{media_path}'
+            try:
+                if not os.path.isfile(f"{self.path}/{filename}"):
+                    print(bcolors.OKGREEN + bcolors.BOLD + f"\nDownloading {filename}"+ bcolors.ENDC)
+                    wget.download(link, f"{self.path}/{filename}")
+                else:
+                    print(bcolors.WARNING + "\nThis file already exists, continuing..." + bcolors.ENDC)
+            except Exception as e:
+                print(e)
+                print("\nFailed to download.")
+        
+    
+    def download_all_media(self, soup):
+        if self.chan_name == '4chan':
+            self.download_all_4chan(soup)
+        elif self.chan_name == '1500chan':
+            self.download_all_1500chan(soup)
 
         self.downloading = False
 
